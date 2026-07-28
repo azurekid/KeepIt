@@ -122,31 +122,6 @@
             "dependsOn": [
                 "KeepItTable"
             ]
-        },
-        {
-            "type": "Microsoft.Resources/deployments",
-            "apiVersion": "2022-09-01",
-            "name": "AnalyticsRules",
-            "properties": {
-                "mode": "Incremental",
-                "templateLink": {
-                    "uri": "https://raw.githubusercontent.com/SecureHats/Azure-Sentinel/master/Solutions/1Password/Package/mainTemplate.json",
-                    "contentVersion": "1.0.0.0"
-                },
-                "parameters": {
-                    "workspace": {
-                        "value": "[parameters('workspaceName')]"
-                    },
-                    "workspace-location": {
-                        "value": "[resourceGroup().location]"
-                    }
-                }
-            },
-            "dependsOn": [
-                "KeepItTable",
-                "DataConnector",
-                "FunctionApp"
-            ]
         }
     ]
 }

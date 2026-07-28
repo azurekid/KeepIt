@@ -11,30 +11,12 @@
         "description": "Specifies the name of the Function App."
       }
     },
-    "KeepItAccountName": {
-      "type": "string",
-      "metadata": {
-        "description": "Specifies the name of the KeepIt account."
-      }
-    },
-    "KeepItHost": {
+    "apiEndpoint": {
       "type": "string",
       "metadata": {
         "description": "uri to the API endpoint to query data."
       },
       "defaultValue": "https://de-fr.keepit.com"
-    },
-    "KeepItLoginName": {
-      "type": "string",
-      "metadata": {
-        "description": "Specifies the name of the KeepIt account."
-      }
-    },
-    "KeepItPassword": {
-      "type": "securestring",
-      "metadata": {
-        "description": "Specifies the password of the KeepIt account."
-      }
     },
     "functionSchedule": {
       "type": "string",
