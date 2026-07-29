@@ -15,7 +15,7 @@
         "description": "Location of the Log Analytics workspace"
       }
     },
-    "TableName": {
+    "tableName": {
       "type": "string",
       "defaultValue": "KeepitAuditLogs_CL",
       "metadata": {
@@ -24,7 +24,7 @@
     }
   },
   "variables": {
-    "customTable": "[format('Custom-{0}', 'KeepitAuditLogs_CL')]"
+    "customTable": "[format('Custom-{0}', parameters('tableName'))]"
   },
   "resources": [
     {
@@ -68,13 +68,13 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Insights/dataCollectionEndpoints', 'KeepIt')]",
-        "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('workspaceName'), 'KeepitAuditLogs_CL')]"
+        "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('workspaceName'), parameters('tableName'))]"
       ]
     },
     {
       "type": "Microsoft.OperationalInsights/workspaces/tables",
       "apiVersion": "2021-12-01-preview",
-      "name": "[format('{0}/{1}', parameters('workspaceName'), 'KeepitAuditLogs_CL')]",
+      "name": "[format('{0}/{1}', parameters('workspaceName'), parameters('tableName'))]",
       "properties": {
         "schema": {
           "name": "[parameters('tableName')]",
