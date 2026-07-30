@@ -24,13 +24,60 @@
     }
   },
   "variables": {
-    "customTable": "[format('Custom-{0}', parameters('tableName'))]"
+    "customTable": "[format('Custom-{0}', parameters('tableName'))]",
+    "regionShortCodes": {
+      "eastus": "eus",
+      "eastus2": "eus2",
+      "westus": "wus",
+      "westus2": "wus2",
+      "westus3": "wus3",
+      "centralus": "cus",
+      "northcentralus": "ncus",
+      "southcentralus": "scus",
+      "canadacentral": "cac",
+      "canadaeast": "cae",
+      "brazilsouth": "brs",
+      "northeurope": "neu",
+      "westeurope": "weu",
+      "uksouth": "uks",
+      "ukwest": "ukw",
+      "francecentral": "frc",
+      "francesouth": "frs",
+      "germanywestcentral": "gwc",
+      "swedencentral": "swc",
+      "swedensouth": "sws",
+      "norwayeast": "nwe",
+      "switzerlandnorth": "chn",
+      "switzerlandwest": "chw",
+      "italynorth": "itn",
+      "spaincentral": "spc",
+      "polandcentral": "plc",
+      "uaenorth": "uan",
+      "qatarcentral": "qac",
+      "southafricanorth": "zan",
+      "australiaeast": "aue",
+      "australiasoutheast": "ause",
+      "australiacentral": "auc",
+      "japaneast": "jpe",
+      "japanwest": "jpw",
+      "koreacentral": "krc",
+      "koreasouth": "krs",
+      "eastasia": "eas",
+      "southeastasia": "sea",
+      "centralindia": "cin",
+      "southindia": "sin",
+      "westindia": "win"
+    },
+    "normalizedLocation": "[toLower(replace(parameters('location'), ' ', ''))]",
+    "derivedLocationShortCode": "[if(contains(variables('regionShortCodes'), variables('normalizedLocation')), variables('regionShortCodes')[variables('normalizedLocation')], take(variables('normalizedLocation'), 3))]",
+    "dceName": "[toLower(format('dce-keepit-{0}-{1}', variables('derivedLocationShortCode'), '001'))]",
+    "dcrName": "[toLower(format('dcr-keepit-{0}-{1}', variables('derivedLocationShortCode'), '001'))]"
   },
   "resources": [
     {
       "type": "Microsoft.Insights/dataCollectionEndpoints",
       "apiVersion": "2021-04-01",
-      "name": "KeepIt",
+      "name": "[variables('dceName')]",
       "location": "[parameters('location')]",
       "properties": {
         "networkAcls": {
@@ -41,10 +88,10 @@
     {
       "type": "Microsoft.Insights/dataCollectionRules",
       "apiVersion": "2021-09-01-preview",
-      "name": "KeepIt",
+      "name": "[variables('dcrName')]",
       "location": "[parameters('location')]",
       "properties": {
-        "dataCollectionEndpointId": "[resourceId('Microsoft.Insights/dataCollectionEndpoints', 'KeepIt')]",
+        "dataCollectionEndpointId": "[resourceId('Microsoft.Insights/dataCollectionEndpoints', variables('dceName'))]",
         "destinations": {
           "logAnalytics": [
             {
@@ -67,7 +114,7 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Insights/dataCollectionEndpoints', 'KeepIt')]",
+        "[resourceId('Microsoft.Insights/dataCollectionEndpoints', variables('dceName'))]",
         "[resourceId('Microsoft.OperationalInsights/workspaces/tables', parameters('workspaceName'), parameters('tableName'))]"
       ]
     },
@@ -125,17 +172,25 @@
     }
   ],
   "outputs": {
+    "dceName": {
+      "type": "string",
+      "value": "[variables('dceName')]"
+    },
+    "dcrName": {
+      "type": "string",
+      "value": "[variables('dcrName')]"
+    },
     "dataCollectionEndpoint": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', 'KeepIt'), '2021-04-01').logsIngestion.endpoint]"
+      "value": "[reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', variables('dceName')), '2021-04-01').logsIngestion.endpoint]"
     },
     "immutableId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', 'KeepIt'), '2021-04-01').immutableId]"
+      "value": "[reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', variables('dceName')), '2021-04-01').immutableId]"
     },
     "endpointUri": {
       "type": "string",
-      "value": "[format('{0}/dataCollectionRules/{1}/streams/{2}?api-version=2021-11-01-preview', reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', 'KeepIt'), '2021-04-01').logsIngestion.endpoint, reference(resourceId('Microsoft.Insights/dataCollectionRules', 'KeepIt'), '2021-09-01-preview').immutableId, variables('customTable'))]"
+      "value": "[format('{0}/dataCollectionRules/{1}/streams/{2}?api-version=2021-11-01-preview', reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', variables('dceName')), '2021-04-01').logsIngestion.endpoint, reference(resourceId('Microsoft.Insights/dataCollectionRules', variables('dcrName')), '2021-09-01-preview').immutableId, variables('customTable'))]"
     }
   }
 }

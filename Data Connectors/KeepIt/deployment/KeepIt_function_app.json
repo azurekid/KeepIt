@@ -50,6 +50,13 @@
         "description": "Specifies the name of the Data Collection Endpoint to create"
       }
     },
+    "dataCollectionRuleName": {
+      "type": "string",
+      "defaultValue": "dcr-keepit",
+      "metadata": {
+        "description": "Specifies the name of the Data Collection Rule used by the Function App"
+      }
+    },
     "packageUri": {
       "type": "string",
       "metadata": {
@@ -59,21 +66,68 @@
     }
   },
   "variables": {
-    "functionName": "[toLower(format('{0}{1}', parameters('FunctionName'), substring(uniqueString(resourceGroup().id), 0, 8)))]",
-    "storageAccountName": "[replace(variables('functionName'),'-', '')]",
+    "regionShortCodes": {
+      "eastus": "eus",
+      "eastus2": "eus2",
+      "westus": "wus",
+      "westus2": "wus2",
+      "westus3": "wus3",
+      "centralus": "cus",
+      "northcentralus": "ncus",
+      "southcentralus": "scus",
+      "canadacentral": "cac",
+      "canadaeast": "cae",
+      "brazilsouth": "brs",
+      "northeurope": "neu",
+      "westeurope": "weu",
+      "uksouth": "uks",
+      "ukwest": "ukw",
+      "francecentral": "frc",
+      "francesouth": "frs",
+      "germanywestcentral": "gwc",
+      "swedencentral": "swc",
+      "swedensouth": "sws",
+      "norwayeast": "nwe",
+      "switzerlandnorth": "chn",
+      "switzerlandwest": "chw",
+      "italynorth": "itn",
+      "spaincentral": "spc",
+      "polandcentral": "plc",
+      "uaenorth": "uan",
+      "qatarcentral": "qac",
+      "southafricanorth": "zan",
+      "australiaeast": "aue",
+      "australiasoutheast": "ause",
+      "australiacentral": "auc",
+      "japaneast": "jpe",
+      "japanwest": "jpw",
+      "koreacentral": "krc",
+      "koreasouth": "krs",
+      "eastasia": "eas",
+      "southeastasia": "sea",
+      "centralindia": "cin",
+      "southindia": "sin",
+      "westindia": "win"
+    },
+    "normalizedLocation": "[toLower(replace(resourceGroup().location, ' ', ''))]",
+    "derivedLocationShortCode": "[if(contains(variables('regionShortCodes'), variables('normalizedLocation')), variables('regionShortCodes')[variables('normalizedLocation')], take(variables('normalizedLocation'), 3))]",
+    "functionAppName": "[toLower(format('func-{0}-{1}-{2}', parameters('FunctionName'), variables('derivedLocationShortCode'), '001'))]",
+    "appServicePlanName": "[toLower(format('asp-{0}-{1}-{2}', parameters('FunctionName'), variables('derivedLocationShortCode'), '001'))]",
+    "applicationInsightsName": "[toLower(format('appi-{0}-{1}-{2}', parameters('FunctionName'), variables('derivedLocationShortCode'), '001'))]",
+    "storageAccountName": "[replace(variables('functionAppName'),'-', '')]",
     "metricsPublisher": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/3913510d-42f4-4e42-8a64-420c390055eb', subscription().subscriptionId)]",
-    "uniqueRoleGuidMetricsPublisher": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('functionName')))]"
+    "uniqueRoleGuidMetricsPublisher": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')))]"
   },
   "resources": [
     {
       "type": "Microsoft.Insights/components",
       "apiVersion": "2015-05-01",
-      "name": "[variables('functionName')]",
+      "name": "[variables('applicationInsightsName')]",
       "location": "[resourceGroup().location]",
       "kind": "web",
       "properties": {
         "Application_Type": "web",
-        "ApplicationId": "[variables('functionName')]"
+        "ApplicationId": "[variables('applicationInsightsName')]"
       }
     },
     {
@@ -151,16 +205,16 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2020-04-01-preview",
       "name": "[variables('uniqueRoleGuidMetricsPublisher')]",
-      "scope": "[format('Microsoft.Insights/dataCollectionRules/{0}', 'KeepIt')]",
+      "scope": "[format('Microsoft.Insights/dataCollectionRules/{0}', parameters('dataCollectionRuleName'))]",
       "properties": {
         "roleDefinitionId": "[variables('metricsPublisher')]",
-        "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('FunctionName')), '2019-08-01', 'full').identity.principalId]"
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2019-08-01', 'full').identity.principalId]"
       }
     },
     {
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2024-11-01",
-      "name": "[variables('FunctionName')]",
+      "name": "[variables('appServicePlanName')]",
       "location": "[resourceGroup().location]",
       "sku": {
         "name": "Y1",
@@ -168,7 +222,7 @@
       },
       "kind": "functionapp",
       "properties": {
-        "name": "[variables('FunctionName')]",
+        "name": "[variables('appServicePlanName')]",
         "workerSize": "0",
         "workerSizeId": "0",
         "numberOfWorkers": "1"
@@ -177,20 +231,20 @@
     {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2023-12-01",
-      "name": "[variables('FunctionName')]",
+      "name": "[variables('functionAppName')]",
       "location": "[resourceGroup().location]",
       "dependsOn": [
         "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
-        "[resourceId('Microsoft.Web/serverfarms', variables('FunctionName'))]",
-        "[resourceId('Microsoft.Insights/components', variables('FunctionName'))]"
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "[resourceId('Microsoft.Insights/components', variables('applicationInsightsName'))]"
       ],
       "kind": "functionapp",
       "identity": {
         "type": "SystemAssigned"
       },
       "properties": {
-        "name": "[variables('FunctionName')]",
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('FunctionName'))]",
+        "name": "[variables('functionAppName')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
         "httpsOnly": true,
         "clientAffinityEnabled": true,
         "siteConfig": {
@@ -200,10 +254,10 @@
     },
     {
       "type": "Microsoft.Web/sites/extensions",
-      "name": "[concat(variables('FunctionName'), '/ZipDeploy')]",
+      "name": "[concat(variables('functionAppName'), '/ZipDeploy')]",
       "apiVersion": "2023-12-01",
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites/config', variables('FunctionName'), 'appsettings')]"
+        "[resourceId('Microsoft.Web/sites/config', variables('functionAppName'), 'appsettings')]"
       ],
       "properties": {
         "packageUri": "[parameters('packageUri')]"
@@ -212,18 +266,18 @@
     {
       "type": "Microsoft.Web/sites/config",
       "apiVersion": "2023-12-01",
-      "name": "[concat(variables('FunctionName'), '/appsettings')]",
+      "name": "[concat(variables('functionAppName'), '/appsettings')]",
       "kind": "functionapp",
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('FunctionName'))]"
+        "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
       ],
       "properties": {
         "FUNCTIONS_EXTENSION_VERSION": "~4",
         "FUNCTIONS_WORKER_RUNTIME": "powershell",
         "FUNCTIONS_WORKER_RUNTIME_VERSION": "7.6",
-        "APPINSIGHTS_CONNECTION_STRING": "[reference(concat('microsoft.insights/components/', variables('functionName')), '2015-05-01').ConnectionString]",
+        "APPINSIGHTS_CONNECTION_STRING": "[reference(concat('microsoft.insights/components/', variables('applicationInsightsName')), '2015-05-01').ConnectionString]",
         "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[NF.StorageConnectionString(variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2019-06-01').keys[0].value)]",
-        "WEBSITE_CONTENTSHARE": "[toLower(variables('FunctionName'))]",
+        "WEBSITE_CONTENTSHARE": "[toLower(variables('functionAppName'))]",
         "WEBSITE_RUN_FROM_PACKAGE": "1",
         "AzureWebJobsStorage": "[NF.StorageConnectionString(variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2019-06-01').keys[0].value)]",
         "KEEPIT_LOOKBACK": "[parameters('functionSchedule')]",
@@ -231,7 +285,7 @@
         "KEEPIT_HOST": "[parameters('KeepItHost')]",
         "KEEPIT_LOGIN": "[parameters('KeepItLoginName')]",
         "KEEPIT_PASSWORD": "[parameters('KeepItPassword')]",
-        "AZURE_CLIENT_ID": "[reference(resourceId('Microsoft.Web/sites', variables('functionName')), '2019-08-01', 'full').identity.principalId]",
+        "AZURE_CLIENT_ID": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2019-08-01', 'full').identity.principalId]",
         "DATA_COLLECTION_ENDPOINT": "[parameters('dataCollectionEndpoint')]"
       }
     },
@@ -307,11 +361,19 @@
   "outputs": {
     "functionAppName": {
       "type": "string",
-      "value": "[variables('functionName')]"
+      "value": "[variables('functionAppName')]"
     },
     "storageAccountName": {
       "type": "string",
       "value": "[tolower(variables('storageAccountName'))]"
+    },
+    "appServicePlanName": {
+      "type": "string",
+      "value": "[variables('appServicePlanName')]"
+    },
+    "applicationInsightsName": {
+      "type": "string",
+      "value": "[variables('applicationInsightsName')]"
     }
   }
 }
