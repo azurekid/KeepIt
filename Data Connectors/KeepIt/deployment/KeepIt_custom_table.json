@@ -109,7 +109,7 @@
               "[parameters('workspaceName')]"
             ],
             "outputStream": "[variables('customTable')]",
-            "transformKql": "source | extend TimeGenerated = timegenerated"
+            "transformKql": "source | extend TimeGenerated = uploadtime"
           }
         ]
       },
@@ -129,46 +129,6 @@
             {
               "name": "TimeGenerated",
               "type": "datetime"
-            },
-            {
-              "name": "timegenerated",
-              "type": "datetime"
-            },
-            {
-              "name": "uploadtime",
-              "type": "datetime"
-            },
-            {
-              "name": "account",
-              "type": "string"
-            },
-            {
-              "name": "connector",
-              "type": "string"
-            },
-            {
-              "name": "acl",
-              "type": "string"
-            },
-            {
-              "name": "method",
-              "type": "string"
-            },
-            {
-              "name": "user",
-              "type": "string"
-            },
-            {
-              "name": "ipaddress",
-              "type": "string"
-            },
-            {
-              "name": "event",
-              "type": "string"
-            },
-            {
-              "name": "metadata",
-              "type": "dynamic"
             },
             {
               "name": "uploadtime",
