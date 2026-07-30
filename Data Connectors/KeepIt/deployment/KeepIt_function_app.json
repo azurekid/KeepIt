@@ -61,8 +61,8 @@
   "variables": {
     "functionName": "[toLower(format('{0}{1}', parameters('FunctionName'), substring(uniqueString(resourceGroup().id), 0, 8)))]",
     "storageAccountName": "[replace(variables('functionName'),'-', '')]",
-    "keyVaultSecretReader": "[format('/subscriptions/){0}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6', subscription().subscriptionId)]",
-    "metricsPublisher": "[format('/subscriptions/){0}/providers/Microsoft.Authorization/roleDefinitions/3913510d-42f4-4e42-8a64-420c390055eb', subscription().subscriptionId)]",
+    "keyVaultSecretReader": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6', subscription().subscriptionId)]",
+    "metricsPublisher": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/3913510d-42f4-4e42-8a64-420c390055eb', subscription().subscriptionId)]",
     "uniqueRoleGuidMetricsPublisher": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('functionName')))]",
     "uniqueRoleGuidKeyVaultSecretReader": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('functionName')))]"
   },
@@ -346,7 +346,6 @@
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('FunctionName'))]",
         "httpsOnly": true,
         "clientAffinityEnabled": true,
-        "alwaysOn": true,
         "siteConfig": {
           "powerShellVersion": "7.2"
         }
