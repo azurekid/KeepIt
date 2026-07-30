@@ -61,10 +61,8 @@
   "variables": {
     "functionName": "[toLower(format('{0}{1}', parameters('FunctionName'), substring(uniqueString(resourceGroup().id), 0, 8)))]",
     "storageAccountName": "[replace(variables('functionName'),'-', '')]",
-    "keyVaultSecretReader": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6', subscription().subscriptionId)]",
     "metricsPublisher": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/3913510d-42f4-4e42-8a64-420c390055eb', subscription().subscriptionId)]",
-    "uniqueRoleGuidMetricsPublisher": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('functionName')))]",
-    "uniqueRoleGuidKeyVaultSecretReader": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('functionName')))]"
+    "uniqueRoleGuidMetricsPublisher": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('functionName')))]"
   },
   "resources": [
     {
@@ -150,157 +148,6 @@
       }
     },
     {
-      "type": "Microsoft.KeyVault/vaults",
-      "apiVersion": "2016-10-01",
-      "name": "[variables('functionName')]",
-      "location": "[resourceGroup().location]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('functionName'))]"
-      ],
-      "properties": {
-        "sku": {
-          "family": "A",
-          "name": "Standard"
-        },
-        "tenantId": "[subscription().tenantId]",
-        "enabledForDeployment": true,
-        "enabledForDiskEncryption": false,
-        "enabledForTemplateDeployment": true,
-        "enableSoftDelete": true,
-        "enableRbacAuthorization": true
-      },
-      "resources": [
-        {
-          "type": "secrets",
-          "apiVersion": "2016-10-01",
-          "name": "AzureWebJobsStorage",
-          "dependsOn": [
-            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
-            "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
-            "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('storageAccountName'), 'default')]",
-            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
-          ],
-          "properties": {
-            "value": "[NF.StorageConnectionString(variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2019-06-01').keys[0].value)]",
-            "contentType": "string",
-            "attributes": {
-              "enabled": true
-            }
-          }
-        },
-        {
-          "type": "secrets",
-          "apiVersion": "2016-10-01",
-          "name": "KeepItAccountName",
-          "dependsOn": [
-            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
-            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
-          ],
-          "properties": {
-            "value": "[parameters('KeepItAccountName')]",
-            "contentType": "string",
-            "attributes": {
-              "enabled": true
-            }
-          }
-        },
-        {
-          "type": "secrets",
-          "apiVersion": "2016-10-01",
-          "name": "KeepItHost",
-          "dependsOn": [
-            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
-            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
-          ],
-          "properties": {
-            "value": "[parameters('KeepItHost')]",
-            "contentType": "string",
-            "attributes": {
-              "enabled": true
-            }
-          }
-        },
-        {
-          "type": "secrets",
-          "apiVersion": "2016-10-01",
-          "name": "KeepItLoginName",
-          "dependsOn": [
-            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
-            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
-          ],
-          "properties": {
-            "value": "[parameters('KeepItLoginName')]",
-            "contentType": "string",
-            "attributes": {
-              "enabled": true
-            }
-          }
-        },
-        {
-          "type": "secrets",
-          "apiVersion": "2016-10-01",
-          "name": "KeepItPassword",
-          "dependsOn": [
-            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
-            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
-          ],
-          "properties": {
-            "value": "[parameters('KeepItPassword')]",
-            "contentType": "string",
-            "attributes": {
-              "enabled": true
-            }
-          }
-        },
-        {
-          "type": "secrets",
-          "apiVersion": "2016-10-01",
-          "name": "functionAppPackage",
-          "dependsOn": [
-            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
-            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
-          ],
-          "properties": {
-            "value": "[parameters('packageUri')]",
-            "contentType": "string",
-            "attributes": {
-              "enabled": true
-            }
-          }
-        },
-        {
-          "type": "secrets",
-          "apiVersion": "2016-10-01",
-          "name": "dataCollectionEndpoint",
-          "dependsOn": [
-            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
-            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
-          ],
-          "properties": {
-            "value": "[parameters('dataCollectionEndpoint')]",
-            "contentType": "string",
-            "attributes": {
-              "enabled": true
-            }
-          }
-        }
-      ]
-    },
-    {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2020-04-01-preview",
-      "name": "[variables('uniqueRoleGuidKeyVaultSecretReader')]",
-      "scope": "[format('Microsoft.KeyVault/vaults/{0}', variables('functionName'))]",
-      "dependsOn": [
-        "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
-        "[resourceId('Microsoft.Web/sites/', variables('functionName'))]"
-      ],
-      "properties": {
-        "roleDefinitionId": "[variables('keyVaultSecretReader')]",
-        "principalId": "[reference(resourceId('Microsoft.Web/sites', variables('functionName')), '2019-08-01', 'full').identity.principalId]"
-      }
-    },
-    {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2020-04-01-preview",
       "name": "[variables('uniqueRoleGuidMetricsPublisher')]",
@@ -356,8 +203,7 @@
       "name": "[concat(variables('FunctionName'), '/ZipDeploy')]",
       "apiVersion": "2023-12-01",
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites/config', variables('FunctionName'), 'appsettings')]",
-        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('functionName'), 'AzureWebJobsStorage')]"
+        "[resourceId('Microsoft.Web/sites/config', variables('FunctionName'), 'appsettings')]"
       ],
       "properties": {
         "packageUri": "[parameters('packageUri')]"
@@ -369,9 +215,7 @@
       "name": "[concat(variables('FunctionName'), '/appsettings')]",
       "kind": "functionapp",
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('FunctionName'))]",
-        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('functionName'), 'AzureWebJobsStorage')]",
-        "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
+        "[resourceId('Microsoft.Web/sites', variables('FunctionName'))]"
       ],
       "properties": {
         "FUNCTIONS_EXTENSION_VERSION": "~4",
@@ -381,14 +225,14 @@
         "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[NF.StorageConnectionString(variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2019-06-01').keys[0].value)]",
         "WEBSITE_CONTENTSHARE": "[toLower(variables('FunctionName'))]",
         "WEBSITE_RUN_FROM_PACKAGE": "1",
-        "AzureWebJobsStorage": "[NF.secretName(variables('functionName'), 'AzureWebJobsStorage')]",
-        "schedule": "[parameters('functionSchedule')]",
-        "KEEPIT_ACCOUNT": "[NF.secretName(variables('functionName'), 'KeepItAccountName')]",
-        "KEEPIT_HOST": "[NF.secretName(variables('functionName'), 'KeepItHost')]",
-        "KEEPIT_LOGIN": "[NF.secretName(variables('functionName'), 'KeepItLoginName')]",
-        "KEEPIT_PASSWORD": "[NF.secretName(variables('functionName'), 'KeepItPassword')]",
+        "AzureWebJobsStorage": "[NF.StorageConnectionString(variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2019-06-01').keys[0].value)]",
+        "KEEPIT_LOOKBACK": "[parameters('functionSchedule')]",
+        "KEEPIT_ACCOUNT": "[parameters('KeepItAccountName')]",
+        "KEEPIT_HOST": "[parameters('KeepItHost')]",
+        "KEEPIT_LOGIN": "[parameters('KeepItLoginName')]",
+        "KEEPIT_PASSWORD": "[parameters('KeepItPassword')]",
         "AZURE_CLIENT_ID": "[reference(resourceId('Microsoft.Web/sites', variables('functionName')), '2019-08-01', 'full').identity.principalId]",
-        "DATA_COLLECTION_ENDPOINT": "[NF.secretName(variables('functionName'), 'dataCollectionEndpoint')]"
+        "DATA_COLLECTION_ENDPOINT": "[parameters('dataCollectionEndpoint')]"
       }
     },
     {
@@ -396,7 +240,6 @@
       "apiVersion": "2019-06-01",
       "name": "[format('{0}/default/{1}', variables('storageAccountName'), variables('storageAccountName'))]",
       "dependsOn": [
-        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('functionName'), 'AzureWebJobsStorage')]",
         "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('storageAccountName'), 'default')]",
         "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
       ],
@@ -442,22 +285,6 @@
     {
       "namespace": "NF",
       "members": {
-        "secretName": {
-          "parameters": [
-            {
-              "name": "VaultName",
-              "type": "string"
-            },
-            {
-              "name": "secretName",
-              "type": "string"
-            }
-          ],
-          "output": {
-            "type": "string",
-            "value": "[concat('@Microsoft.KeyVault(VaultName=', parameters('VaultName'), ';', 'SecretName=', parameters('secretName'), ')')]"
-          }
-        },
         "StorageConnectionString": {
           "parameters": [
             {
@@ -485,10 +312,6 @@
     "storageAccountName": {
       "type": "string",
       "value": "[tolower(variables('storageAccountName'))]"
-    },
-    "keyVaultName": {
-      "type": "string",
-      "value": "[variables('functionName')]"
     }
   }
 }

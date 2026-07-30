@@ -60,14 +60,11 @@ function Get-AuthHeader {
         }
     }
     catch {
-        $statusCode = $null
-        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
-            $statusCode = [int]$_.Exception.Response.StatusCode
-        }
+        $statusCodeText = if ($_.Exception.Response -and $_.Exception.Response.StatusCode) { [string][int]$_.Exception.Response.StatusCode } else { 'unknown' }
 
         Write-Error 'Response body:'
         # Write-Error (Get-ResponseBodyFromError -ErrorRecord $_)
-        Write-Error "Keepit login test failed. HTTP $statusCode"
+        Write-Error "Keepit login test failed. HTTP $statusCodeText"
         return $null
     }
 }
@@ -81,8 +78,35 @@ function Get-KeepItAuditLogs {
         [object]$AuthHeader
     )
 
+    # Support either direct minute values (e.g. "5") or NCRONTAB schedules (e.g. "0 */5 * * * *").
+    $resolvedLookbackMinutes = 5
+    $rawLookback = $LookbackMinutes
+
+    if ([string]::IsNullOrWhiteSpace($rawLookback)) {
+        $rawLookback = $env:KEEPIT_LOOKBACK
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($rawLookback)) {
+        $minutesValue = 0
+        if ([int]::TryParse($rawLookback, [ref]$minutesValue) -and $minutesValue -gt 0) {
+            $resolvedLookbackMinutes = $minutesValue
+        }
+        else {
+            $cronParts = $rawLookback.Trim().Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if ($cronParts.Count -eq 6 -and $cronParts[1] -match '^\*/(\d+)$') {
+                $stepMinutes = [int]$Matches[1]
+                if ($stepMinutes -gt 0) {
+                    $resolvedLookbackMinutes = $stepMinutes
+                }
+            }
+            else {
+                Write-Warning "Unable to parse KEEPIT_LOOKBACK value '$rawLookback'. Falling back to $resolvedLookbackMinutes minute(s)."
+            }
+        }
+    }
+
     $ToTime = (Get-Date -AsUTC).ToString('yyyy-MM-ddTHH:mm:ssZ')
-    $FromTime = (Get-Date -AsUTC).AddMinutes(-($LookbackMinutes)).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $FromTime = (Get-Date -AsUTC).AddMinutes(-$resolvedLookbackMinutes).ToString('yyyy-MM-ddTHH:mm:ssZ')
 
     $uri = 'https://{0}/audit/filter/pretty' -f $env:KEEPIT_HOST
     $body = '<filter><account>{0}</account><from>{1}</from><to>{2}</to></filter>' -f $env:KEEPIT_ACCOUNT, $FromTime, $ToTime
@@ -106,11 +130,6 @@ function Get-KeepItAuditLogs {
         }
     }
     catch {
-        $statusCode = $null
-        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
-            $statusCode = [int]$_.Exception.Response.StatusCode
-        }
-
         Write-Error 'Response body:'
         Write-Error (Get-ResponseBodyFromError -ErrorRecord $_)
     }

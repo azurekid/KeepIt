@@ -10,10 +10,10 @@ Write-Host "PowerShell timer trigger function ran! TIME: $currentUTCtime"
 $results = @()
 
 $headers = Get-AuthHeader
-$response = Get-KeepItAuditLogs -LookbackMinutes 5 -Headers $headers
+$response = Get-KeepItAuditLogs -LookbackMinutes $env:KEEPIT_LOOKBACK -Headers $headers
 $parsedRecords = Convert-KeepitAuditLogs -XmlText $response.Content
 
-if $parsedRecords -eq $null {
+if ($parsedRecords -eq $null) {
     Write-Verbose "No records were parsed. Exiting."
     exit 0
 } else {
