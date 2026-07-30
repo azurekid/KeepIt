@@ -146,8 +146,7 @@ function Get-KeepItAuditLogs {
     }
 
     $ToTime = (Get-Date -AsUTC).ToString('yyyy-MM-ddTHH:mm:ssZ')
-    # $FromTime = (Get-Date -AsUTC).AddMinutes(-$resolvedLookbackMinutes).ToString('yyyy-MM-ddTHH:mm:ssZ')
-        $FromTime = (Get-Date -AsUTC).AddMinutes(-14400).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $FromTime = (Get-Date -AsUTC).AddMinutes(-$resolvedLookbackMinutes).ToString('yyyy-MM-ddTHH:mm:ssZ')
 
     $uri = Get-NormalizedUri -Path '/audit/filter/pretty'
     if ($null -eq $uri) {
