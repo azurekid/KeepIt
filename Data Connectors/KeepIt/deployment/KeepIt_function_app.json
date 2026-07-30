@@ -316,10 +316,10 @@
       "name": "[variables('FunctionName')]",
       "location": "[resourceGroup().location]",
       "sku": {
-        "name": "FC1",
-        "tier": "FlexConsumption"
+        "name": "Y1",
+        "tier": "Dynamic"
       },
-      "kind": "linux",
+      "kind": "functionapp",
       "properties": {
         "name": "[variables('FunctionName')]",
         "workerSize": "0",
@@ -337,7 +337,7 @@
         "[resourceId('Microsoft.Web/serverfarms', variables('FunctionName'))]",
         "[resourceId('Microsoft.Insights/components', variables('FunctionName'))]"
       ],
-      "kind": "functionapp, linux",
+      "kind": "functionapp",
       "identity": {
         "type": "SystemAssigned"
       },
@@ -354,7 +354,7 @@
     {
       "type": "Microsoft.Web/sites/extensions",
       "name": "[concat(variables('FunctionName'), '/ZipDeploy')]",
-      "apiVersion": "2020-12-01",
+      "apiVersion": "2023-12-01",
       "dependsOn": [
         "[resourceId('Microsoft.Web/sites/config', variables('FunctionName'), 'appsettings')]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('functionName'), 'AzureWebJobsStorage')]"
@@ -365,7 +365,7 @@
     },
     {
       "type": "Microsoft.Web/sites/config",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2023-12-01",
       "name": "[concat(variables('FunctionName'), '/appsettings')]",
       "kind": "functionapp",
       "dependsOn": [
