@@ -31,7 +31,8 @@ if ($parsedRecords -eq $null) {
     exit 0
 } else {
     Write-Verbose "Parsed $($parsedRecords.Count) record(s)."
-    Write-Verbose $parsedRecords
+    $parsedRecordsPreview = $parsedRecords | ConvertTo-Json -Depth 6 -Compress
+    Write-Verbose "Parsed records payload: $parsedRecordsPreview"
 }
 
 if ($parsedRecords.count -gt 0) {

@@ -17,7 +17,6 @@
     },
     "functionName": {
       "type": "string",
-      "defaultValue": "KeepIt",
       "minLength": 1,
       "maxLength": 11,
       "metadata": {
