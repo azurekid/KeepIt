@@ -47,7 +47,7 @@
             "metadata": {
                 "description": "Specifies the URI of the arifacts on GitHub"
             },
-            "defaultValue": "https://raw.githubusercontent.com/azurekid/KeepIt/refs/heads/main/Data%20Connectors/1Password/deployment/"
+            "defaultValue": "https://raw.githubusercontent.com/azurekid/KeepIt/refs/heads/main/Data%20Connectors/KeepIt/deployment/"
         }
     },
     "resources": [
@@ -95,12 +95,12 @@
                         "value": "[parameters('KeepItPassword')]"
                     },
                     "dataCollectionEndpoint": {
-                        "value": "[reference('1PasswordTable').outputs.endpointUri.value]"
+                        "value": "[reference('KeepItTable').outputs.endpointUri.value]"
                     }
                 }
             },
             "dependsOn": [
-                "1PasswordTable"
+                "KeepItTable"
             ]
         },
         {

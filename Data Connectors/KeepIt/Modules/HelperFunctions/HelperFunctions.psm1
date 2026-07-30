@@ -1,230 +1,3 @@
-Function Get-AuditLogs {
-    <#
-    .SYNOPSIS
-        This function retrieves data from an API and performs some transformations on the results.
-    .DESCRIPTION
-        The function takes in parameters for lastRunTime, cursor, and api. It uses these parameters to construct the API request and retrieve data from the API.
-        The retrieved data is then processed and transformed. The function adds a log source value, renames reserved Microsoft Sentinel column names, and outputs the results.
-    .PARAMETER lastRunTime
-        The last run time of the function. This parameter is optional.
-    .PARAMETER cursor
-        The cursor value for pagination. This parameter is optional.
-    .PARAMETER api
-        The API endpoint to retrieve data from. This parameter is optional.
-    .OUTPUTS
-        The function returns an array of results retrieved from the API.
-    .EXAMPLE
-        $results = Get-AuditLogs -lastRunTime "2022-01-01T00:00:00" -cursor "abc123" -api "https://api.example.com"
-
-        This example retrieves data from the API with the specified last run time, cursor, and API endpoint.
-    #>
-
-    param (
-        [Parameter(Mandatory = $false)]
-        [string]$lastRunTime,
-
-        [Parameter(Mandatory = $false)]
-        [string]$cursor,
-
-        [Parameter(Mandatory = $false)]
-        [string]$api
-    )
-
-    $results = @()
-
-    $headers = @{
-        'Authorization' = "Bearer $env:APIKey"
-        'ContentType'   = 'Application/Json'
-    }
-
-    if (!($cursor -or $cursor -eq "none")) {
-        Write-Host "Processing Time Stamp"
-        $payload = @{
-            'start_time' = $lastRunTime
-            'limit'      = 100
-        }
-    }
-    else {
-        Write-Host "Processing cursor"
-        $payload = @{
-            'cursor' = $cursor
-        }
-        Write-Verbose $payload
-    }
-
-    try {
-        $uri = "$($env:apiEndpoint)/api/v1/$api"
-        Do {
-            $apiResponse = (Invoke-RestMethod -Method POST -Uri $uri -Headers $headers -body ($payload | ConvertTo-Json))
-            $results += $apiResponse.items
-
-            $payload = @{
-                "cursor" = $apiResponse.cursor
-            }
-        } Until ($apiResponse.has_more -eq $false)
-
-        # Add Log source value
-        if ($results) {
-            Write-Verbose "Adding Log Source '$($api)'"
-            $results | add-member "log_source" -NotePropertyValue "$api"
-        }
-        #rename reserved Microsoft Sentinel column names [uuid and type]
-        if ($results.uuid) {
-            $results | ForEach-Object {
-                $_ | add-member "uuid_s" -NotePropertyValue $_."uuid"
-                $_.psobject.properties.remove("uuid")
-            }
-        }
-
-        if ($results.type) {
-            $results | ForEach-Object {
-                $_ | add-member "action_type" -NotePropertyValue $_."type"
-                $_.psobject.properties.remove("type")
-            }
-        }
-        Write-Host "Results found: $($results.count)"
-    }
-    catch {
-        # Write-Warning "Unable to connect to API [$($env:apiEndpoint)]"
-    }
-    if ($apiResponse.cursor) {
-        Set-Cursor -cursor $api -cursorValue $apiResponse.cursor @storagePayload
-    } else {
-        Set-Cursor -cursor $api -cursorValue 'none' @storagePayload
-    }
-
-
-    return $results
-}
-
-Function Set-Cursor {
-    <#
-    .SYNOPSIS
-        Sets the cursor value for a given cursor.
-    .DESCRIPTION
-        This function sets the cursor value for a given cursor. The cursor value is saved in a JSON file in the temp folder and then uploaded to Azure Blob Storage.
-    .PARAMETER cursor
-        The name of the cursor to set.
-    .PARAMETER cursorValue
-        The value to set the cursor to.
-    .PARAMETER AzureWebJobsStorage
-        The connection string for the Azure Blob Storage account.
-    .PARAMETER storageAccountContainer
-        The name of the container in the Azure Blob Storage account to store the cursor file in.
-    .EXAMPLE
-        Set-Cursor -cursor 'myCursor' -cursorValue '12345' -AzureWebJobsStorage $AzureWebJobsStorage -storageAccountContainer 'myContainer'
-    #>
-    param (
-        [Parameter(Mandatory = $false)]
-        [string]$cursor,
-
-        [Parameter(Mandatory = $true)]
-        [string]$cursorValue,
-
-        [Parameter(Mandatory = $true)]
-        [string]$AzureWebJobsStorage,
-
-        [Parameter(Mandatory = $true)]
-        [string]$storageAccountContainer
-    )
-
-    $body = @{
-        "cursor" = $cursorValue
-    }
-
-    $body | ConvertTo-Json | Out-File "$env:temp\$cursor.json"
-
-    try {
-        Write-Verbose "Selecting Storage Context"
-        $storageAccountContext = New-AzStorageContext -ConnectionString $AzureWebJobsStorage
-    }
-    catch {
-        return 'Unable to connect to Storage Context'
-    }
-
-    Write-Verbose 'Saving new cursor'
-    try {
-        $null = Set-AzStorageBlobContent `
-            -Blob "$cursor.json" `
-            -Container $storageAccountContainer `
-            -Context $storageAccountContext `
-            -File "$env:temp\$cursor.json" `
-            -Force
-    }
-    catch {
-        return "Unable to create new $cursor"
-    }
-}
-
-Function Get-Cursor {
-    <#
-    .SYNOPSIS
-        Retrieves the cursor value from a JSON file stored in Azure Blob Storage.
-    .DESCRIPTION
-        This function retrieves the cursor value from a JSON file stored in Azure Blob Storage. The cursor value is used to keep track of the last processed event in the 1Password data connector.
-    .PARAMETER AzureWebJobsStorage
-        The connection string for the Azure Blob Storage account.
-    .PARAMETER storageAccountContainer
-        The name of the container in the Azure Blob Storage account where the JSON file is stored.
-    .PARAMETER cursor
-        The name of the JSON file containing the cursor value.
-    .EXAMPLE
-        Get-Cursor -AzureWebJobsStorage $AzureWebJobsStorage -storageAccountContainer "1password" -cursor "1password_cursor"
-    .NOTES
-        Author: Rogier Dijkman
-    #>
-
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$AzureWebJobsStorage,
-
-        [Parameter(Mandatory = $true)]
-        [string]$storageAccountContainer,
-
-        [Parameter(Mandatory = $true)]
-        [string]$cursor
-    )
-
-    $storageAccountContext = New-AzStorageContext -ConnectionString $AzureWebJobsStorage
-
-    try {
-        Write-Verbose "Get Blob Context"
-        $blobContext = Get-AzStorageBlob `
-            -Blob "$cursor.json" `
-            -Container $storageAccountContainer `
-            -Context $storageAccountContext
-    }
-    catch {
-        Write-Output "Unable to access [$cursor.json]"
-    }
-
-    if (![string]::IsNullOrEmpty($blobContext)) {
-        Write-Verbose "Get Blob File"
-        try {
-            $null = Get-AzStorageBlobContent `
-                -Blob "$cursor.json" `
-                -Container $storageAccountContainer `
-                -Context $storageAccountContext `
-                -Destination "$env:temp\$cursor.json" `
-                -Force
-
-            Write-Verbose "Get File Content"
-            $lastRunAuditContext = Get-Content "$env:temp\$cursor.json" | ConvertFrom-Json
-            if ($null -ne $lastRunAuditContext) {
-                $cursorValue = ($lastRunAuditContext.cursor)
-                return $cursorValue
-            }
-            else {
-                Write-Warning "[!] No context was found for cursor [$cursor]"
-                Set-TimeStamp -AzureWebJobsStorage $AzureWebJobsStorage -storageAccountContainer $storageAccountContainer
-            }
-        }
-        catch {
-            Write-Warning "[! An error has occured fetching the cursor for '$cursor']"
-        }
-    }
-}
-
 Function Send-Data {
     <#
     .SYNOPSIS
@@ -259,143 +32,197 @@ Function Send-Data {
 
     try {
         Invoke-RestMethod -Uri "$uri" -Body $body @requestHeader
-    } catch {
+    }
+    catch {
         Write-Warning "Unable to sent data. Validate if the account '$($token.UserId)' has Access to the Data Collection Rule"
     }
 
 }
 
-Function Set-TimeStamp {
-    <#
-    .SYNOPSIS
-        Sets a timestamp for the last run of a function and saves it to Azure Storage Blob.
-    .DESCRIPTION
-        This function sets a timestamp for the last run of a function and saves it to Azure Storage Blob. If no previous timestamp is provided, the current timestamp is used. The timestamp is saved as a JSON file in the temp folder and then uploaded to the specified Azure Storage Blob container.
-    .PARAMETER lastRun
-        The timestamp of the last run of the function. If not provided, the current timestamp is used.
-    .PARAMETER AzureWebJobsStorage
-        The connection string for the Azure Storage Account.
-    .PARAMETER storageAccountContainer
-        The name of the Azure Storage Blob container where the timestamp file will be saved.
-    .EXAMPLE
-        Set-TimeStamp -AzureWebJobsStorage $AzureWebJobsStorage -storageAccountContainer $storageAccountContainer
-    #>
-    param (
-        [Parameter(Mandatory = $false)]
-        [string]$lastRun,
+function Get-AuthHeader {
 
-        [Parameter(Mandatory = $true)]
-        [string]$AzureWebJobsStorage,
+    $KEEPIT_PASSWORD = 'av_ZcB@ReY_8ro#WK(gLv2,='
+    $KEEPIT_LOGIN = 'oZV2Z1CjBn17u$mWPvmxH)k@'
+    $KEEPIT_HOST = 'de-fr.keepit.com'
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes("$KEEPIT_LOGIN`:$KEEPIT_PASSWORD")
+    $AuthHeader = 'Basic ' + [Convert]::ToBase64String($bytes)
 
-        [Parameter(Mandatory = $true)]
-        [string]$storageAccountContainer
-    )
-
-    if ([string]::IsNullOrEmpty($lastRun)) {
-        $lastRun = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
-    } else {
-        ([datetime]$lastRun).ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+    $headers = @{
+        Accept        = 'application/vnd.keepit.v4+xml'
+        Authorization = $AuthHeader
     }
-
-    $lastRunAudit = @{
-        "lastRun" = $lastRun
-    }
-
-    $lastRunAudit | ConvertTo-Json | Out-File "$env:temp\timestamp.json"
 
     try {
-        Write-Verbose "Selecting Storage Context"
-        $storageAccountContext = New-AzStorageContext -ConnectionString $AzureWebJobsStorage
+        $response = Invoke-WebRequest -Uri "https://$KEEPIT_HOST" -Headers $headers
+        if (!([string]::IsNullOrWhiteSpace($response))) {
+            Write-Host "Keepit login test succeeded. HTTP $($response.StatusCode)"
+            return $headers | ConvertTo-Json | ConvertTo-SecureString -AsPlainText -Force
+        }
     }
     catch {
-        return 'Unable to connect to Storage Context'
-    }
+        $statusCode = $null
+        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
 
-    Write-Verbose 'Saving new timestamp'
-    try {
-        $null = Set-AzStorageBlobContent `
-            -Blob "timestamp.json" `
-            -Container $storageAccountContainer `
-            -Context $storageAccountContext `
-            -File "$env:temp\timestamp.json" `
-            -Force
+        Write-Error 'Response body:'
+        # Write-Error (Get-ResponseBodyFromError -ErrorRecord $_)
+        Write-Error "Keepit login test failed. HTTP $statusCode"
+        return $null
     }
-    catch {
-        return 'Unable to create new timestamp'
-    }
-    return $lastRun
 }
 
-Function Get-TimeStamp {
-    <#
-    .SYNOPSIS
-        This function retrieves the timestamp of the last run of a script from a JSON file stored in an Azure Storage Account.
-    .DESCRIPTION
-        This function retrieves the timestamp of the last run of a script from a JSON file stored in an Azure Storage Account. If the JSON file is not found or is empty, the function sets the timestamp to the current time and writes it to the JSON file.
-    .PARAMETER AzureWebJobsStorage
-        The connection string for the Azure Storage Account.
-    .PARAMETER storageAccountContainer
-        The name of the container in the Azure Storage Account where the JSON file is stored.
-    .EXAMPLE
-        Get-TimeStamp -AzureWebJobsStorage $AzureWebJobsStorage -storageAccountContainer $storageAccountContainer
-    #>
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$AzureWebJobsStorage,
+function Get-KeepItAuditLogs {
+    param(
+        [Parameter()]
+        [string]$LookbackMinutes,
 
-        [Parameter(Mandatory = $true)]
-        [string]$storageAccountContainer
+        [Parameter()]
+        [object]$AuthHeader
     )
 
-    $storageAccountContext = New-AzStorageContext -ConnectionString $AzureWebJobsStorage
+    $ToTime = (Get-Date -AsUTC).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $FromTime = (Get-Date -AsUTC).AddMinutes(-($LookbackMinutes)).ToString('yyyy-MM-ddTHH:mm:ssZ')
 
-    $storageAccountContext = New-AzStorageContext -ConnectionString $AzureWebJobsStorage
-    $blobs = Get-AzStorageBlob -Container $storageAccountContainer -Context $storageAccountContext | Select-Object Name
-    if ($null -eq $blobs) {
-        Set-TimeStamp @storagePayload
+    $uri = 'https://{0}/audit/filter/pretty' -f $env:KEEPIT_HOST
+    $body = '<filter><account>{0}</account><from>{1}</from><to>{2}</to></filter>' -f $env:KEEPIT_ACCOUNT, $FromTime, $ToTime
+
+    $Params = @{
+        Uri         = $uri
+        Method      = 'Put'
+        Headers     = $AuthHeader | ConvertFrom-SecureString -AsPlainText | ConvertFrom-Json -AsHashtable
+        Body        = $body
+        ContentType = 'application/xml'
+        TimeoutSec  = 60
     }
 
     try {
-        Write-Verbose "Get Blob Context"
-        $blobContext = Get-AzStorageBlob `
-            -Blob "timestamp.json" `
-            -Container $storageAccountContainer `
-            -Context $storageAccountContext
+        Write-Verbose "Get-KeepItAuditLogs: Sending request to Keepit API..."
+
+        $response = Invoke-WebRequest @Params
+
+        if (!([string]::IsNullOrWhiteSpace($response))) {
+            return $response
+        }
     }
     catch {
-        Write-Host "Unable to access [timestamp.json]"
-        $timestamp = Set-TimeStamp @storagePayload
+        $statusCode = $null
+        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
+
+        Write-Error 'Response body:'
+        Write-Error (Get-ResponseBodyFromError -ErrorRecord $_)
+    }
+}
+
+function Get-XmlChildValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Xml.XmlNode]$Xml,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $node = $Xml.SelectSingleNode("$Name")
+    if ($null -eq $node -or $null -eq $node.InnerText) {
+        return ''
     }
 
-    if (![string]::IsNullOrEmpty($blobContext)) {
-        Write-Verbose "Get Blob File"
-        try {
-            $null = Get-AzStorageBlobContent `
-                -Blob "timestamp.json" `
-                -Container $storageAccountContainer `
-                -Context $storageAccountContext `
-                -Destination "$env:temp\timestamp.json" `
-                -Force
+    return $node.InnerText
+}
 
-            Write-Verbose "Get File Content"
-            $lastRunAuditContext = Get-Content "$env:temp\timestamp.json" | ConvertFrom-Json
-            if ($null -ne $lastRunAuditContext) {
-                $timestamp = ($lastRunAuditContext.lastRun).ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+function Convert-KeepitRecord {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Xml.XmlNode]$RecordXml
+    )
+
+    $metadata = @{}
+    $metadataNodes = $RecordXml.SelectNodes('metadata/parameter')
+
+    if ($null -ne $metadataNodes) {
+        foreach ($parameter in $metadataNodes) {
+            $keyNode = $parameter.SelectSingleNode('key')
+            $valueNode = $parameter.SelectSingleNode('value')
+
+            $key = if ($null -ne $keyNode -and $null -ne $keyNode.InnerText) { $keyNode.InnerText } else { '' }
+            $value = if ($null -ne $valueNode -and $null -ne $valueNode.InnerText) { $valueNode.InnerText } else { '' }
+
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $metadata[$key] = $value
             }
-            else {
-                $timestamp = Set-TimeStamp @storagePayload
-            }
+        }
+    }
+
+    $timeGeneratedText = Get-XmlChildValue -Xml $RecordXml -Name 'time'
+    $timeGenerated = $null
+    if (-not [string]::IsNullOrWhiteSpace($timeGeneratedText)) {
+        try {
+            $timeGenerated = [DateTimeOffset]::Parse($timeGeneratedText).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
         }
         catch {
-            $timestamp = Set-TimeStamp @storagePayload
+            $timeGenerated = $timeGeneratedText
         }
-        return $timestamp
+    }
+
+    [pscustomobject]@{
+        TimeGenerated = $timeGenerated
+        uploadtime    = [DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+        account       = Get-XmlChildValue -Xml $RecordXml -Name 'account'
+        connector     = Get-XmlChildValue -Xml $RecordXml -Name 'device'
+        acl           = Get-XmlChildValue -Xml $RecordXml -Name 'acl'
+        method        = Get-XmlChildValue -Xml $RecordXml -Name 'method'
+        user          = Get-XmlChildValue -Xml $RecordXml -Name 'token'
+        ipaddress     = Get-XmlChildValue -Xml $RecordXml -Name 'client-ip'
+        event         = Get-XmlChildValue -Xml $RecordXml -Name 'message'
+        metadata      = $metadata
     }
 }
 
-Function Get-Variables {
-    $global:storagePayload = @{
-        'AzureWebJobsStorage'     = $env:AzureWebJobsStorage
-        'storageAccountContainer' = "cursors"
+function Convert-KeepitAuditLogs {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$XmlText
+    )
+
+    $root = [xml]$XmlText
+    $records = @()
+
+    foreach ($record in $root.SelectNodes('//record')) {
+        $records += Convert-KeepitRecord -RecordXml $record
+    }
+
+    return $records
+}
+
+function Get-ResponseBodyFromError {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Management.Automation.ErrorRecord]$ErrorRecord
+    )
+
+    $response = $ErrorRecord.Exception.Response
+    if ($null -eq $response) {
+        return $ErrorRecord.Exception.Message
+    }
+
+    try {
+        $stream = $response.GetResponseStream()
+        if ($null -eq $stream) {
+            return $ErrorRecord.Exception.Message
+        }
+
+        $reader = [System.IO.StreamReader]::new($stream)
+        try {
+            return $reader.ReadToEnd()
+        }
+        finally {
+            $reader.Dispose()
+        }
+    }
+    catch {
+        return $ErrorRecord.Exception.Message
     }
 }

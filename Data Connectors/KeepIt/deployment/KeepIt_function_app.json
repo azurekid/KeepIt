@@ -11,12 +11,30 @@
         "description": "Specifies the name of the Function App."
       }
     },
-    "apiEndpoint": {
+    "KeepItAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Specifies the name of the KeepIt account."
+      }
+    },
+    "KeepItHost": {
       "type": "string",
       "metadata": {
         "description": "uri to the API endpoint to query data."
       },
       "defaultValue": "https://de-fr.keepit.com"
+    },
+    "KeepItLoginName": {
+      "type": "string",
+      "metadata": {
+        "description": "Specifies the name of the KeepIt account."
+      }
+    },
+    "KeepItPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Specifies the password of the KeepIt account."
+      }
     },
     "functionSchedule": {
       "type": "string",
@@ -32,18 +50,12 @@
         "description": "Specifies the name of the Data Collection Endpoint to create"
       }
     },
-    "apiToken": {
-      "type": "securestring",
-      "metadata": {
-        "description": "Specifies the API Key to connect to the API of 1Password"
-      }
-    },
     "packageUri": {
       "type": "string",
       "metadata": {
         "description": "Specifies the URI to the package to deploy"
       },
-      "defaultValue": "https://raw.githubusercontent.com/SecureHats/Azure-Sentinel/master/Solutions/1Password/Data%20Connectors/1Password/function.zip"
+      "defaultValue": "https://github.com/azurekid/KeepIt/raw/refs/heads/main/Data%20Connectors/KeepIt/function.zip"
     }
   },
   "variables": {
@@ -179,13 +191,61 @@
         {
           "type": "secrets",
           "apiVersion": "2016-10-01",
-          "name": "APIKey",
+          "name": "KeepItAccountName",
           "dependsOn": [
             "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
             "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
           ],
           "properties": {
-            "value": "[parameters('apiToken')]",
+            "value": "[parameters('KeepItAccountName')]",
+            "contentType": "string",
+            "attributes": {
+              "enabled": true
+            }
+          }
+        },
+        {
+          "type": "secrets",
+          "apiVersion": "2016-10-01",
+          "name": "KeepItHost",
+          "dependsOn": [
+            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
+            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
+          ],
+          "properties": {
+            "value": "[parameters('KeepItHost')]",
+            "contentType": "string",
+            "attributes": {
+              "enabled": true
+            }
+          }
+        },
+        {
+          "type": "secrets",
+          "apiVersion": "2016-10-01",
+          "name": "KeepItLoginName",
+          "dependsOn": [
+            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
+            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
+          ],
+          "properties": {
+            "value": "[parameters('KeepItLoginName')]",
+            "contentType": "string",
+            "attributes": {
+              "enabled": true
+            }
+          }
+        },
+        {
+          "type": "secrets",
+          "apiVersion": "2016-10-01",
+          "name": "KeepItPassword",
+          "dependsOn": [
+            "[resourceId('Microsoft.KeyVault/vaults/', variables('functionName'))]",
+            "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/', variables('functionName')), 'Microsoft.Authorization/roleAssignments/', variables('uniqueRoleGuidKeyVaultSecretReader'))]"
+          ],
+          "properties": {
+            "value": "[parameters('KeepItPassword')]",
             "contentType": "string",
             "attributes": {
               "enabled": true
@@ -324,10 +384,12 @@
         "WEBSITE_RUN_FROM_PACKAGE": "1",
         "AzureWebJobsStorage": "[NF.secretName(variables('functionName'), 'AzureWebJobsStorage')]",
         "schedule": "[parameters('functionSchedule')]",
-        "apiEndpoint": "[parameters('apiEndpoint')]",
-        "APIKey": "[NF.secretName(variables('functionName'), 'APIKey')]",
+        "KEEPIT_ACCOUNT": "[NF.secretName(variables('functionName'), 'KeepItAccountName')]",
+        "KEEPIT_HOST": "[NF.secretName(variables('functionName'), 'KeepItHost')]",
+        "KEEPIT_LOGIN": "[NF.secretName(variables('functionName'), 'KeepItLoginName')]",
+        "KEEPIT_PASSWORD": "[NF.secretName(variables('functionName'), 'KeepItPassword')]",
         "AZURE_CLIENT_ID": "[reference(resourceId('Microsoft.Web/sites', variables('functionName')), '2019-08-01', 'full').identity.principalId]",
-        "dataCollectionEndpoint": "[NF.secretName(variables('functionName'), 'dataCollectionEndpoint')]"
+        "DATA_COLLECTION_ENDPOINT": "[NF.secretName(variables('functionName'), 'dataCollectionEndpoint')]"
       }
     },
     {
