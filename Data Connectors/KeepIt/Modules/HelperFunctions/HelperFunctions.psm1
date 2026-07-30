@@ -228,18 +228,25 @@ function Convert-KeepitRecord {
 
     $timeGeneratedText = Get-XmlChildValue -Xml $RecordXml -Name 'time'
     $timeGenerated = $null
+    $uploadTime = [DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+
     if (-not [string]::IsNullOrWhiteSpace($timeGeneratedText)) {
         try {
             $timeGenerated = [DateTimeOffset]::Parse($timeGeneratedText).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
         }
         catch {
-            $timeGenerated = $timeGeneratedText
+            # If the source timestamp cannot be parsed, leave it null and use upload time as a safe fallback.
+            $timeGenerated = $null
         }
     }
 
+    if ([string]::IsNullOrWhiteSpace($timeGenerated)) {
+        $timeGenerated = $uploadTime
+    }
+
     [pscustomobject]@{
-        TimeGenerated = $timeGenerated
-        uploadtime    = [DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+        EventStartTime = $timeGenerated
+        uploadtime    = $uploadTime
         account       = Get-XmlChildValue -Xml $RecordXml -Name 'account'
         connector     = Get-XmlChildValue -Xml $RecordXml -Name 'device'
         acl           = Get-XmlChildValue -Xml $RecordXml -Name 'acl'
