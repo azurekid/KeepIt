@@ -20,7 +20,7 @@ Function Send-Data {
         [object]$body
     )
 
-    $uri = "$env:dataCollectionEndpoint"
+    $uri = "$env:DATA_COLLECTION_ENDPOINT"
     $token = Get-AzAccessToken -ResourceUrl https://monitor.azure.com
 
     $requestHeader = @{
