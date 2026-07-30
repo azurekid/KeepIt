@@ -1,0 +1,72 @@
+let vimAuditEventKeepIt = (
+    starttime:datetime=datetime(null),
+    endtime:datetime=datetime(null),
+    srcipaddr_has_any_prefix:dynamic=dynamic([]),
+    actorusername_has_any:dynamic=dynamic([]),
+    operation_has_any:dynamic=dynamic([]),
+    object_has_any:dynamic=dynamic([]),
+    eventresult_in:dynamic=dynamic([]),
+    disabled:bool=false
+) {
+    KeepitAuditLogs_CL
+    | where not(disabled)
+    | where (isnull(starttime) or TimeGenerated >= starttime)
+        and (isnull(endtime) or TimeGenerated <= endtime)
+    | extend
+        ActorUsername = coalesce(tostring(user), tostring(account)),
+        EventType = case(
+            event has_any ("create", "created", "add", "added"), "Creation",
+            event has_any ("delete", "deleted", "remove", "removed"), "Deletion",
+            event has_any ("update", "updated", "change", "changed", "modify", "modified"), "Change",
+            event has_any ("login", "sign in", "sign-in"), "Login",
+            "Other"
+        ),
+        EventResult = case(
+            event has_any ("fail", "failed", "error", "denied", "unauthorized"), "Failure",
+            "Success"
+        ),
+        EventSeverity = iff(EventResult == "Failure", "Low", "Informational")
+    | extend
+        TargetObject = coalesce(tostring(account), tostring(connector)),
+        TargetType = iff(isnotempty(TargetObject), "Resource", "Unknown"),
+        AdditionalFields = bag_pack(
+            "acl", acl,
+            "connector", connector,
+            "method", method,
+            "metadata", metadata,
+            "uploadtime", uploadtime
+        ),
+        ActorUsernameType = case(
+            isempty(ActorUsername), "",
+            ActorUsername has "@", "UPN",
+            ActorUsername has "\\", "Windows",
+            "Unknown"
+        )
+    | where (array_length(srcipaddr_has_any_prefix) == 0 or has_any_ipv4_prefix(tostring(ipaddress), srcipaddr_has_any_prefix))
+        and (array_length(actorusername_has_any) == 0 or ActorUsername has_any (actorusername_has_any))
+        and (array_length(operation_has_any) == 0 or EventType has_any (operation_has_any))
+        and (array_length(object_has_any) == 0 or TargetObject has_any (object_has_any))
+        and (array_length(eventresult_in) == 0 or EventResult in (eventresult_in))
+    | project
+        TimeGenerated,
+        EventVendor = "KeepIt",
+        EventProduct = "KeepIt",
+        EventSchema = "AuditEvent",
+        EventSchemaVersion = "0.1.0",
+        EventCount = int(1),
+        EventStartTime = TimeGenerated,
+        EventEndTime = TimeGenerated,
+        EventType,
+        EventResult,
+        EventSeverity,
+        ActorUsername,
+        ActorUsernameType,
+        SrcIpAddr = tostring(ipaddress),
+        TargetType,
+        TargetObject,
+        EventMessage = tostring(event),
+        EventOriginalType = tostring(method),
+        AdditionalFields
+};
+
+vimAuditEventKeepIt

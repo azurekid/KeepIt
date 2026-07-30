@@ -109,7 +109,7 @@
               "[parameters('workspaceName')]"
             ],
             "outputStream": "[variables('customTable')]",
-            "transformKql": "source | extend TimeGenerated = now()"
+            "transformKql": "source | extend TimeGenerated = EventStartTime"
           }
         ]
       },
