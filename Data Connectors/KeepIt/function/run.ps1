@@ -10,7 +10,20 @@ Write-Host "PowerShell timer trigger function ran! TIME: $currentUTCtime"
 $results = @()
 
 $headers = Get-AuthHeader
+$response = $null
+
+if ($null -eq $headers) {
+    Write-Error "Unable to construct Keepit auth header. Stopping run."
+    exit 1
+}
+
 $response = Get-KeepItAuditLogs -LookbackMinutes $env:KEEPIT_LOOKBACK -AuthHeader $headers
+
+if ($null -eq $response -or [string]::IsNullOrWhiteSpace($response.Content)) {
+    Write-Verbose "No response content was returned by Keepit. Exiting without ingestion."
+    exit 0
+}
+
 $parsedRecords = Convert-KeepitAuditLogs -XmlText $response.Content
 
 if ($parsedRecords -eq $null) {

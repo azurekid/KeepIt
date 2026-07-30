@@ -39,12 +39,45 @@ Function Send-Data {
 
 }
 
-function Get-AuthHeader {
+function Get-NormalizedUri {
+    param(
+        [Parameter()]
+        [string]$Host = $env:KEEPIT_HOST,
 
-    $KEEPIT_PASSWORD = 'av_ZcB@ReY_8ro#WK(gLv2,='
-    $KEEPIT_LOGIN = 'oZV2Z1CjBn17u$mWPvmxH)k@'
-    $KEEPIT_HOST = 'de-fr.keepit.com'
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes("$KEEPIT_LOGIN`:$KEEPIT_PASSWORD")
+        [Parameter()]
+        [string]$Path
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Host)) {
+        Write-Error 'KEEPIT_HOST is not configured.'
+        return $null
+    }
+
+    $normalizedHost = $Host.Trim().TrimEnd('/')
+    if ($normalizedHost -match '^https?://') {
+        $normalizedHost = $normalizedHost -replace '^https?://', ''
+    }
+
+    $baseUri = "https://$normalizedHost"
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $baseUri
+    }
+
+    $normalizedPath = $Path.Trim()
+    if ($normalizedPath.StartsWith('/')) {
+        return "$baseUri$normalizedPath"
+    }
+
+    return "$baseUri/$normalizedPath"
+}
+
+function Get-AuthHeader {
+    if ([string]::IsNullOrWhiteSpace($env:KEEPIT_LOGIN) -or [string]::IsNullOrWhiteSpace($env:KEEPIT_PASSWORD)) {
+        Write-Error 'KEEPIT_LOGIN or KEEPIT_PASSWORD is not configured.'
+        return $null
+    }
+
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes("$($env:KEEPIT_LOGIN)`:$($env:KEEPIT_PASSWORD)")
     $AuthHeader = 'Basic ' + [Convert]::ToBase64String($bytes)
 
     $headers = @{
@@ -52,12 +85,19 @@ function Get-AuthHeader {
         Authorization = $AuthHeader
     }
 
+    $baseUri = Get-NormalizedUri
+    if ($null -eq $baseUri) {
+        return $null
+    }
+
     try {
-        $response = Invoke-WebRequest -Uri "https://$KEEPIT_HOST" -Headers $headers
+        $response = Invoke-WebRequest -Uri $baseUri -Headers $headers
         if (!([string]::IsNullOrWhiteSpace($response))) {
             Write-Host "Keepit login test succeeded. HTTP $($response.StatusCode)"
-            return $headers | ConvertTo-Json | ConvertTo-SecureString -AsPlainText -Force
+            return $headers
         }
+
+        return $null
     }
     catch {
         $statusCodeText = if ($_.Exception.Response -and $_.Exception.Response.StatusCode) { [string][int]$_.Exception.Response.StatusCode } else { 'unknown' }
@@ -108,13 +148,21 @@ function Get-KeepItAuditLogs {
     $ToTime = (Get-Date -AsUTC).ToString('yyyy-MM-ddTHH:mm:ssZ')
     $FromTime = (Get-Date -AsUTC).AddMinutes(-$resolvedLookbackMinutes).ToString('yyyy-MM-ddTHH:mm:ssZ')
 
-    $uri = 'https://{0}/audit/filter/pretty' -f $env:KEEPIT_HOST
+    $uri = Get-NormalizedUri -Path '/audit/filter/pretty'
+    if ($null -eq $uri) {
+        return $null
+    }
     $body = '<filter><account>{0}</account><from>{1}</from><to>{2}</to></filter>' -f $env:KEEPIT_ACCOUNT, $FromTime, $ToTime
+
+    if ($null -eq $AuthHeader) {
+        Write-Error 'Auth header is empty. Aborting Keepit audit request.'
+        return $null
+    }
 
     $Params = @{
         Uri         = $uri
         Method      = 'Put'
-        Headers     = $AuthHeader | ConvertFrom-SecureString -AsPlainText | ConvertFrom-Json -AsHashtable
+        Headers     = $AuthHeader
         Body        = $body
         ContentType = 'application/xml'
         TimeoutSec  = 60
@@ -128,10 +176,13 @@ function Get-KeepItAuditLogs {
         if (!([string]::IsNullOrWhiteSpace($response))) {
             return $response
         }
+
+        return $null
     }
     catch {
         Write-Error 'Response body:'
         Write-Error (Get-ResponseBodyFromError -ErrorRecord $_)
+        return $null
     }
 }
 
