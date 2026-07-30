@@ -312,14 +312,14 @@
     },
     {
       "type": "Microsoft.Web/serverfarms",
-      "apiVersion": "2018-02-01",
+      "apiVersion": "2024-11-01",
       "name": "[variables('FunctionName')]",
       "location": "[resourceGroup().location]",
       "sku": {
-        "name": "Y1",
-        "tier": "Dynamic"
+        "name": "FC1",
+        "tier": "FlexConsumption"
       },
-      "kind": "functionapp",
+      "kind": "linux",
       "properties": {
         "name": "[variables('FunctionName')]",
         "workerSize": "0",
@@ -329,7 +329,7 @@
     },
     {
       "type": "Microsoft.Web/sites",
-      "apiVersion": "2021-03-01",
+      "apiVersion": "2023-12-01",
       "name": "[variables('FunctionName')]",
       "location": "[resourceGroup().location]",
       "dependsOn": [
@@ -337,7 +337,7 @@
         "[resourceId('Microsoft.Web/serverfarms', variables('FunctionName'))]",
         "[resourceId('Microsoft.Insights/components', variables('FunctionName'))]"
       ],
-      "kind": "functionapp",
+      "kind": "functionapp, linux",
       "identity": {
         "type": "SystemAssigned"
       },
@@ -347,7 +347,7 @@
         "httpsOnly": true,
         "clientAffinityEnabled": true,
         "siteConfig": {
-          "powerShellVersion": "7.2"
+          "powerShellVersion": "7.6"
         }
       }
     },
@@ -376,7 +376,7 @@
       "properties": {
         "FUNCTIONS_EXTENSION_VERSION": "~4",
         "FUNCTIONS_WORKER_RUNTIME": "powershell",
-        "FUNCTIONS_WORKER_RUNTIME_VERSION": "7.2",
+        "FUNCTIONS_WORKER_RUNTIME_VERSION": "7.6",
         "APPINSIGHTS_CONNECTION_STRING": "[reference(concat('microsoft.insights/components/', variables('functionName')), '2015-05-01').ConnectionString]",
         "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[NF.StorageConnectionString(variables('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2019-06-01').keys[0].value)]",
         "WEBSITE_CONTENTSHARE": "[toLower(variables('FunctionName'))]",
