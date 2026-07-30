@@ -245,7 +245,7 @@ function Convert-KeepitRecord {
     }
 
     [pscustomobject]@{
-        timegererated = $timeGenerated
+        EventStartTime = $timeGenerated
         uploadtime    = $uploadTime
         account       = Get-XmlChildValue -Xml $RecordXml -Name 'account'
         connector     = Get-XmlChildValue -Xml $RecordXml -Name 'device'

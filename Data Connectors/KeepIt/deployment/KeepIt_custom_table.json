@@ -109,7 +109,7 @@
               "[parameters('workspaceName')]"
             ],
             "outputStream": "[variables('customTable')]",
-            "transformKql": "source | extend TimeGenerated = uploadtime"
+            "transformKql": "source | extend TimeGenerated = EventStartTime | project-away EventStartTime"
           }
         ]
       },
@@ -128,6 +128,10 @@
           "columns": [
             {
               "name": "TimeGenerated",
+              "type": "datetime"
+            },
+            {
+              "name": "EventStartTime",
               "type": "datetime"
             },
             {
