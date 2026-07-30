@@ -10,7 +10,7 @@ Write-Host "PowerShell timer trigger function ran! TIME: $currentUTCtime"
 $results = @()
 
 $headers = Get-AuthHeader
-$response = Get-KeepItAuditLogs -LookbackMinutes $env:KEEPIT_LOOKBACK -Headers $headers
+$response = Get-KeepItAuditLogs -LookbackMinutes $env:KEEPIT_LOOKBACK -AuthHeader $headers
 $parsedRecords = Convert-KeepitAuditLogs -XmlText $response.Content
 
 if ($parsedRecords -eq $null) {
