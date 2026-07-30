@@ -100,6 +100,7 @@
       "location": "[parameters('location')]",
       "properties": {
         "dataCollectionEndpointId": "[resourceId('Microsoft.Insights/dataCollectionEndpoints', variables('dceName'))]",
+        "streamDeclarations": "[createObject(variables('customTable'), createObject('columns', createArray(createObject('name', 'EventStartTime', 'type', 'string'), createObject('name', 'uploadtime', 'type', 'string'), createObject('name', 'account', 'type', 'string'), createObject('name', 'connector', 'type', 'string'), createObject('name', 'acl', 'type', 'string'), createObject('name', 'method', 'type', 'string'), createObject('name', 'user', 'type', 'string'), createObject('name', 'ipaddress', 'type', 'string'), createObject('name', 'event', 'type', 'string'), createObject('name', 'metadata', 'type', 'dynamic'))))]",
         "destinations": {
           "logAnalytics": [
             {
@@ -117,7 +118,7 @@
               "[parameters('workspaceName')]"
             ],
             "outputStream": "[variables('customTable')]",
-            "transformKql": "source | extend TimeGenerated = EventStartTime | project-away EventStartTime"
+            "transformKql": "source | project TimeGenerated = todatetime(EventStartTime), EventStartTime = todatetime(EventStartTime), uploadtime = todatetime(uploadtime), account, connector, acl, method, user, ipaddress, event, metadata"
           }
         ]
       },
