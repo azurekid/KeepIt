@@ -15,6 +15,15 @@
         "description": "Location of the Log Analytics workspace"
       }
     },
+    "functionName": {
+      "type": "string",
+      "defaultValue": "KeepIt",
+      "minLength": 1,
+      "maxLength": 11,
+      "metadata": {
+        "description": "Specifies the name of the Function App."
+      }
+    },
     "tableName": {
       "type": "string",
       "defaultValue": "KeepitAuditLogs_CL",
@@ -70,8 +79,8 @@
     },
     "normalizedLocation": "[toLower(replace(parameters('location'), ' ', ''))]",
     "derivedLocationShortCode": "[if(contains(variables('regionShortCodes'), variables('normalizedLocation')), variables('regionShortCodes')[variables('normalizedLocation')], take(variables('normalizedLocation'), 3))]",
-    "dceName": "[toLower(format('dce-keepit-{0}-{1}', variables('derivedLocationShortCode'), '001'))]",
-    "dcrName": "[toLower(format('dcr-keepit-{0}-{1}', variables('derivedLocationShortCode'), '001'))]"
+    "dceName": "[toLower(format('dce-{0}-{1}-{2}', parameters('functionName'), variables('derivedLocationShortCode'), '01'))]",
+    "dcrName": "[toLower(format('dcr-{0}-{1}-{2}', parameters('functionName'), variables('derivedLocationShortCode'), '01'))]"
   },
   "resources": [
     {

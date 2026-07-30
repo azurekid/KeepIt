@@ -146,7 +146,8 @@ function Get-KeepItAuditLogs {
     }
 
     $ToTime = (Get-Date -AsUTC).ToString('yyyy-MM-ddTHH:mm:ssZ')
-    $FromTime = (Get-Date -AsUTC).AddMinutes(-$resolvedLookbackMinutes).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    # $FromTime = (Get-Date -AsUTC).AddMinutes(-$resolvedLookbackMinutes).ToString('yyyy-MM-ddTHH:mm:ssZ')
+        $FromTime = (Get-Date -AsUTC).AddMinutes(-14400).ToString('yyyy-MM-ddTHH:mm:ssZ')
 
     $uri = Get-NormalizedUri -Path '/audit/filter/pretty'
     if ($null -eq $uri) {
@@ -227,25 +228,25 @@ function Convert-KeepitRecord {
     }
 
     $timeGeneratedText = Get-XmlChildValue -Xml $RecordXml -Name 'time'
-    $timeGenerated = $null
+    $timeStamp = $null
     $uploadTime = [DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
 
     if (-not [string]::IsNullOrWhiteSpace($timeGeneratedText)) {
         try {
-            $timeGenerated = [DateTimeOffset]::Parse($timeGeneratedText).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
+            $timeStamp = [DateTimeOffset]::Parse($timeGeneratedText).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
         }
         catch {
             # If the source timestamp cannot be parsed, leave it null and use upload time as a safe fallback.
-            $timeGenerated = $null
+            $timeStamp = $null
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($timeGenerated)) {
-        $timeGenerated = $uploadTime
-    }
+    # if ([string]::IsNullOrWhiteSpace($timeStamp)) {
+    #     $timeGenerated = $uploadTime
+    # }
 
     [pscustomobject]@{
-        EventStartTime = $timeGenerated
+        EventStartTime = $timeStamp
         uploadtime    = $uploadTime
         account       = Get-XmlChildValue -Xml $RecordXml -Name 'account'
         connector     = Get-XmlChildValue -Xml $RecordXml -Name 'device'

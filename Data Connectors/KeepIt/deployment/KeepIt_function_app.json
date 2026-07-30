@@ -111,9 +111,9 @@
     },
     "normalizedLocation": "[toLower(replace(resourceGroup().location, ' ', ''))]",
     "derivedLocationShortCode": "[if(contains(variables('regionShortCodes'), variables('normalizedLocation')), variables('regionShortCodes')[variables('normalizedLocation')], take(variables('normalizedLocation'), 3))]",
-    "functionAppName": "[toLower(format('func-{0}-{1}-{2}', parameters('FunctionName'), variables('derivedLocationShortCode'), '001'))]",
-    "appServicePlanName": "[toLower(format('asp-{0}-{1}-{2}', parameters('FunctionName'), variables('derivedLocationShortCode'), '001'))]",
-    "applicationInsightsName": "[toLower(format('appi-{0}-{1}-{2}', parameters('FunctionName'), variables('derivedLocationShortCode'), '001'))]",
+    "functionAppName": "[toLower(format('func-{0}-{1}-{2}', parameters('FunctionName'), variables('derivedLocationShortCode'), '01'))]",
+    "appServicePlanName": "[toLower(format('asp-{0}-{1}-{2}', parameters('FunctionName'), variables('derivedLocationShortCode'), '01'))]",
+    "applicationInsightsName": "[toLower(format('appi-{0}-{1}-{2}', parameters('FunctionName'), variables('derivedLocationShortCode'), '01'))]",
     "storageAccountName": "[replace(variables('functionAppName'),'-', '')]",
     "metricsPublisher": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/3913510d-42f4-4e42-8a64-420c390055eb', subscription().subscriptionId)]",
     "uniqueRoleGuidMetricsPublisher": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')))]"

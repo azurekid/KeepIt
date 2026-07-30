@@ -111,6 +111,9 @@
                 "parameters": {
                     "workspaceName": {
                         "value": "[parameters('workspaceName')]"
+                    },
+                    "functionName": {
+                        "value": "[parameters('functionName')]"
                     }
                 }
             }
