@@ -7,5 +7,6 @@ This folder contains KQL functions for normalizing KeepIt audit logs into ASIM-c
 - Parser function: `vimAuditEventKeepIt`
 - Source table: `KeepitAuditLogs_CL`
 - ASIM schema: `AuditEvent`
+- Detailed documentation: `vimAuditEventKeepIt.md`
 
 The function is designed to be saved in Microsoft Sentinel as a query function and used as the source-specific KeepIt AuditEvent parser.
