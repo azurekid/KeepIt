@@ -1,0 +1,116 @@
+id: 47794680-196f-4a19-a958-36f4f80794de
+Function:
+  Title: Parser for Audit Events Keepit
+  Version: "1.0.0"
+  LastUpdated: "2026-08-18"
+Category: Microsoft Sentinel Parser
+FunctionName: vimAuditEventKeepIt
+FunctionAlias: vimAuditEventKeepIt
+FunctionQuery: |
+  let vimAuditEventKeepIt = (
+      starttime:datetime=datetime(null),
+      endtime:datetime=datetime(null),
+      srcipaddr_has_any_prefix:dynamic=dynamic([]),
+      actorusername_has_any:dynamic=dynamic([]),
+      operation_has_any:dynamic=dynamic([]),
+      object_has_any:dynamic=dynamic([]),
+      eventresult_in:dynamic=dynamic([]),
+      disabled:bool=false
+  ) {
+      let srcipaddr_terms = case(
+          coalesce(array_length(srcipaddr_has_any_prefix), -1) > 0, srcipaddr_has_any_prefix,
+          coalesce(array_length(srcipaddr_has_any_prefix), -1) == 0 and tostring(srcipaddr_has_any_prefix) !in ('', '[]'), pack_array(tostring(srcipaddr_has_any_prefix)),
+          dynamic([])
+      );
+      let actorusername_terms = case(
+          coalesce(array_length(actorusername_has_any), -1) > 0, actorusername_has_any,
+          coalesce(array_length(actorusername_has_any), -1) == 0 and tostring(actorusername_has_any) !in ('', '[]'), pack_array(tostring(actorusername_has_any)),
+          dynamic([])
+      );
+      let operation_terms = case(
+          coalesce(array_length(operation_has_any), -1) > 0, operation_has_any,
+          coalesce(array_length(operation_has_any), -1) == 0 and tostring(operation_has_any) !in ('', '[]'), pack_array(tostring(operation_has_any)),
+          dynamic([])
+      );
+      let actorusername_raw = tostring(actorusername_has_any);
+      let actorusername_filter = tolower(trim(@" []()'\"", actorusername_raw));
+      let object_terms = case(
+          coalesce(array_length(object_has_any), -1) > 0, object_has_any,
+          coalesce(array_length(object_has_any), -1) == 0 and tostring(object_has_any) !in ('', '[]'), pack_array(tostring(object_has_any)),
+          dynamic([])
+      );
+      let eventresult_terms = case(
+          coalesce(array_length(eventresult_in), -1) > 0, eventresult_in,
+          coalesce(array_length(eventresult_in), -1) == 0 and tostring(eventresult_in) !in ('', '[]'), pack_array(tostring(eventresult_in)),
+          dynamic([])
+      );
+      KeepitAuditLogs_CL
+      | extend
+          _user = tostring(column_ifexists("user", "")),
+          _account = tostring(column_ifexists("account", "")),
+          _token = tostring(column_ifexists("token", "")),
+          _username = tostring(column_ifexists("username", ""))
+      | where not(disabled)
+      | where (isnull(starttime) or TimeGenerated >= starttime)
+          and (isnull(endtime) or TimeGenerated <= endtime)
+      | extend
+          ActorUsername = coalesce(_user, _account, _token, _username),
+          EventType = case(
+              event has_any ("create", "created", "add", "added"), "Creation",
+              event has_any ("delete", "deleted", "remove", "removed"), "Deletion",
+              event has_any ("update", "updated", "change", "changed", "modify", "modified"), "Change",
+              event has_any ("login", "sign in", "sign-in"), "Login",
+              "Other"
+          ),
+          EventResult = case(
+              event has_any ("fail", "failed", "error", "denied", "unauthorized"), "Failure",
+              "Success"
+          )
+      | extend
+          EventSeverity = iff(EventResult == "Failure", "Low", "Informational")
+      | extend
+          TargetObject = coalesce(tostring(account), tostring(connector)),
+          AdditionalFields = bag_pack(
+              "acl", acl,
+              "connector", connector,
+              "method", method,
+              "metadata", metadata,
+              "uploadtime", uploadtime
+          ),
+          ActorUsernameType = case(
+              isempty(ActorUsername), "",
+              ActorUsername has "@", "UPN",
+              "Unknown"
+          )
+      | extend
+          TargetType = iff(isnotempty(TargetObject), "Resource", "Unknown")
+      | where (array_length(srcipaddr_terms) == 0 or has_any_ipv4_prefix(tostring(ipaddress), srcipaddr_terms))
+          and (
+              actorusername_raw in ('', '[]')
+              or (actorusername_raw startswith '[' and tolower(ActorUsername) has_any (actorusername_terms))
+              or (not(actorusername_raw startswith '[') and isnotempty(actorusername_filter) and tolower(ActorUsername) contains actorusername_filter)
+          )
+          and (array_length(operation_terms) == 0 or EventType has_any (operation_terms))
+          and (array_length(object_terms) == 0 or TargetObject has_any (object_terms))
+          and (array_length(eventresult_terms) == 0 or EventResult in (eventresult_terms))
+      | project
+          TimeGenerated,
+          EventVendor = "KeepIt",
+          EventProduct = "KeepIt",
+          EventSchema = "AuditEvent",
+          EventSchemaVersion = "0.1.0",
+          EventCount = int(1),
+          EventStartTime = TimeGenerated,
+          EventEndTime = TimeGenerated,
+          EventType,
+          EventResult,
+          EventSeverity,
+          ActorUsername,
+          ActorUsernameType,
+          SrcIpAddr = tostring(ipaddress),
+          TargetType,
+          TargetObject,
+          EventMessage = tostring(event),
+          EventOriginalType = tostring(method),
+          AdditionalFields
+  };

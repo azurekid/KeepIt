@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceName": {
+      "value": "azh-eus-prd-sentinel"
+    },
+    "functionName": {
+      "value": "KeepIt"
+    },
+    "KeepItAccountName": {
+      "value": "ldckee-2fq64o-9rkoxs"
+    },
+    "KeepItHost": {
+      "value": "https://de-fr.keepit.com"
+    },
+    "KeepItLoginName": {
+      "value": "oZV2Z1CjBn17u$mWPvmxH)k@"
+    },
+    "KeepItPassword": {
+      "value": "av_ZcB@ReY_8ro#WK(gLv2,="
+    },
+    "baseUri": {
+      "value": "https://raw.githubusercontent.com/azurekid/KeepIt/refs/heads/main/Data%20Connectors/KeepIt/deployment/"
+    }
+  }
+}

@@ -1,17 +1,15 @@
 {
-	"publisherId": "1password1617200969773",
-	"offerId": "1password",
-	"firstPublishDate": "2023-12-01",
-	"providers": ["1password"],
+	"publisherId": "azurekid",
+	"offerId": "azure-sentinel-solution-keepit",
+	"firstPublishDate": "2028-08-19",
+	"providers": ["KeepIt"],
 	"categories": {
-		"domains": [
-            "Security - Others",
-            "Identity"
-          ]
+		"domains": ["Security - Others"]
 	},
 	"support": {
-	  "name": "1Password",
+	  "name": "Azure Hacking",
+	  "email": "rogier.dijkman@azurehacking.com",
 	  "tier": "Community",
-	  "link": "https://support.1password.com/"
+	  "link": "https://www.keepit.com/support"
 	}
 }
