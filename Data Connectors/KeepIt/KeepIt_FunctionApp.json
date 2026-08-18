@@ -1,6 +1,6 @@
 {
     "id": "KeepIt",
-    "title": "KeepIt",
+    "title": "KeepIt (Using Azure Functions)",
     "publisher": "Rogier Dijkman (Azure Hacking)",
     "descriptionMarkdown": "The [KeepIt](https://www.keepit.com) solution for Microsoft Sentinel enables you to ingest KeepIt audit events into Microsoft Sentinel. The connector provides visibility into KeepIt activities and alerts in Microsoft Sentinel to improve monitoring and investigation capabilities.\n\n**Underlying Microsoft Technologies used:**\n\nThis solution takes a dependency on the following technologies, and some of these dependencies either may be in [Preview](https://azure.microsoft.com/support/legal/preview-supplemental-terms/) state or might result in additional ingestion or operational costs:\n\n-  [Azure Functions](https://azure.microsoft.com/services/functions/#overview)",
     "additionalRequirementBanner": "These queries are dependent on a parser based on a Kusto Function deployed as part of the solution.",
